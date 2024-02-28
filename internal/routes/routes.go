@@ -6,16 +6,7 @@ import (
 	"strings"
 
 	"github.com/gmafrac/crebito_api/internal/db"
-	"github.com/jackc/pgx/v5"
 )
-
-type Server struct {
-	conn *pgx.Conn
-}
-
-func NewServer(conn *pgx.Conn) *Server {
-	return &Server{conn: conn}
-}
 
 func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 
