@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -22,7 +23,9 @@ type Server struct {
 	proxy *httputil.ReverseProxy
 }
 
-func NewServer(conn *pgx.Conn, addr string) *Server {
+func NewServer(conn *pgx.Conn, apiID string) *Server {
+
+	addr := fmt.Sprintf("http://api0%s:3000", apiID)
 	url, err := url.Parse(addr)
 	if err != nil {
 		panic(err)

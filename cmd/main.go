@@ -21,17 +21,13 @@ func main() {
 	}
 	defer conn.Close(ctx)
 
-	lb := routes.NewLoadBalancer(
-		utils.GetEnv("SERVER_ADDR"),
-		[]*routes.Server{
-			routes.NewServer(conn, "http://localhost:8081"),
-			routes.NewServer(conn, "http://localhost:8082"),
-		})
+	apiServer := routes.NewServer(conn, utils.GetEnv("API_ID"))
 
-	http.HandleFunc("/clientes/", lb.ServeProxy)
+	http.HandleFunc("/clientes/", apiServer.Handler)
 
-	log.Printf("Server started at port " + lb.GetPort())
-	if err := http.ListenAndServe(":"+lb.GetPort(), nil); err != nil {
+	log.Printf("Server started at port: " + apiServer.GetAddress())
+
+	if err := http.ListenAndServe(":9999", nil); err != nil {
 		log.Fatalf("Failed to start")
 	}
 }
