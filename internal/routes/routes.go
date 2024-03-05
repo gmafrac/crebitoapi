@@ -14,7 +14,7 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(path, "/")
 	id, _ := strconv.Atoi(pathParts[1])
 
-	cliente, ok := db.GetClient(s.conn, id)
+	cliente, ok := db.GetClient(s.pool, id)
 	if !ok {
 		http.Error(w, "Error: Invalid client id", http.StatusNotFound)
 		return
@@ -29,7 +29,7 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		extract, ok := db.GetExtrato(s.conn, cliente)
+		extract, ok := db.GetExtrato(s.pool, cliente)
 		if !ok {
 			http.Error(w, "Error", http.StatusBadRequest)
 			return
@@ -42,29 +42,31 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 
 		if pathParts[2] != "transacoes" {
-			http.Error(w, "Error: Path not found", http.StatusNotFound)
+			http.Error(w, "Error: Path not found", http.StatusUnprocessableEntity)
 			return
 		}
 
-		transaction, ok := db.GetTransaction(r, id)
-		if !ok {
-			http.Error(w, "Error decoding Json", http.StatusBadRequest)
+		transaction, status := db.GetTransaction(r, id)
+		if status != http.StatusOK {
+			http.Error(w, "Error decoding Json", status)
 			return
 		}
 
-		transaction.SaveToDB(s.conn)
+		transaction.SaveToDB(s.pool)
 
 		switch transaction.Type {
 
 		case "d":
-			ok = cliente.ProcessDebitTransaction(s.conn, transaction.Value)
-			if !ok {
-				http.Error(w, "Insufficient Balance", http.StatusUnprocessableEntity)
+			status := cliente.ProcessDebitTransaction(s.pool, transaction.Value)
+			if status != http.StatusOK {
+				http.Error(w, "", status)
 			}
+			cliente.SendResponse(w)
 			return
 
 		case "c":
-			cliente.ProcessCreditTransaction(s.conn, transaction.Value)
+			cliente.ProcessCreditTransaction(s.pool, transaction.Value)
+			cliente.SendResponse(w)
 			return
 
 		default:

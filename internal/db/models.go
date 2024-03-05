@@ -1,25 +1,22 @@
 package db
 
 import (
-	"sync"
 	"time"
 )
 
 type Client struct {
-	sync.Mutex
-
-	ID      int `db:"id"`
-	Balance int `db:"saldo"`
-	Limit   int `db:"limite"`
+	ID      int `db:"id" json:"-"`
+	Balance int `db:"saldo" json:"saldo"`
+	Limit   int `db:"limite" json:"limite"`
 }
 
 type Transaction struct {
-	ID          int       `db:"id"`
-	Value       int       `db:"valor"`
-	Type        string    `db:"tipo"`
-	Description string    `db:"descricao"`
-	CreatedAt   time.Time `db:"realizada_em"`
-	ClientID    int       `db:"cliente_id"`
+	ID          int       `db:"id" json:"id"`
+	Value       int       `db:"valor" json:"valor"`
+	Type        string    `db:"tipo" json:"tipo"`
+	Description string    `db:"descricao" json:"descricao"`
+	CreatedAt   time.Time `db:"realizada_em" json:"realizada_em"`
+	ClientID    int       `db:"cliente_id" json:"cliente_id"`
 }
 
 type AccountSummary struct {

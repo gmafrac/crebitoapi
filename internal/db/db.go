@@ -3,10 +3,11 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const update = `
@@ -31,59 +32,84 @@ const get_extract = `
 	LIMIT 10	
 `
 
-func GetClient(conn *pgx.Conn, id int) (*Client, bool) {
+func GetClient(pool *pgxpool.Pool, id int) (*Client, bool) {
 	c := &Client{}
-	c.Lock()
-	defer c.Unlock()
 
-	err := conn.QueryRow(context.Background(), select_client, id).Scan(&c.ID, &c.Limit, &c.Balance)
+	err := pool.QueryRow(context.Background(), select_client, id).Scan(&c.ID, &c.Limit, &c.Balance)
 	if err != nil {
+		log.Print(err)
 		return nil, false
 	}
 	return c, true
 }
 
-func (c *Client) ProcessCreditTransaction(conn *pgx.Conn, value int) {
-	c.BalanceUpdate(conn, value)
+func (c *Client) ProcessCreditTransaction(pool *pgxpool.Pool, value int) {
+	c.BalanceUpdate(pool, value)
 }
 
-func (c *Client) ProcessDebitTransaction(conn *pgx.Conn, value int) bool {
+func (c *Client) ProcessDebitTransaction(pool *pgxpool.Pool, value int) int {
 	balance := c.Balance - value
-	if balance < c.Limit {
-		return false
+	if balance < -c.Limit {
+		return http.StatusUnprocessableEntity
 	}
-	c.BalanceUpdate(conn, -value)
-	return true
+	return c.BalanceUpdate(pool, -value)
+
 }
 
-func (c *Client) BalanceUpdate(conn *pgx.Conn, value int) {
-
-	conn.Exec(
+func (c *Client) BalanceUpdate(pool *pgxpool.Pool, value int) int {
+	new_balance := c.Balance + value
+	pool.Exec(
 		context.Background(),
 		update,
-		c.Balance+value, c.ID)
+		new_balance, c.ID)
+	c.Balance = new_balance
+
+	return http.StatusOK
+
 }
 
-func GetTransaction(r *http.Request, id int) (*Transaction, bool) {
+func (c *Client) SendResponse(w http.ResponseWriter) {
+
+	json, err := json.Marshal(c)
+
+	if err != nil {
+		http.Error(w, "Error", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(json)
+}
+
+func GetTransaction(r *http.Request, id int) (*Transaction, int) {
 	transaction := &Transaction{}
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		return nil, false
+		return nil, http.StatusUnprocessableEntity
 	}
+
+	if len(transaction.Description) > 10 {
+		return nil, http.StatusUnprocessableEntity
+	}
+
+	if transaction.Value == 0 || transaction.Type == "" || transaction.Description == "" {
+		return nil, http.StatusUnprocessableEntity
+	}
+
 	defer r.Body.Close()
 	transaction.ClientID = id
-	return transaction, true
+
+	return transaction, http.StatusOK
 }
 
-func (t *Transaction) SaveToDB(conn *pgx.Conn) bool {
+func (t *Transaction) SaveToDB(pool *pgxpool.Pool) bool {
 
-	_, err := conn.Exec(
+	_, err := pool.Exec(
 		context.Background(),
 		add_transaction,
 		t.Value, t.Type, t.Description, t.ClientID)
 	return err == nil
 }
 
-func GetExtrato(conn *pgx.Conn, c *Client) (*Extract, bool) {
+func GetExtrato(pool *pgxpool.Pool, c *Client) (*Extract, bool) {
 
 	extract := &Extract{
 		AccountSummary: AccountSummary{
@@ -92,7 +118,7 @@ func GetExtrato(conn *pgx.Conn, c *Client) (*Extract, bool) {
 			StatementDate: time.Now()},
 		LastTransations: []TransactionSummary{}}
 
-	rows, err := conn.Query(
+	rows, err := pool.Query(
 		context.Background(),
 		get_extract, c.ID)
 

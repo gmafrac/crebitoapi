@@ -1,50 +1,41 @@
 package routes
 
 import (
-	"fmt"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
+	"context"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// var (
-// 	backends = []string{
-// 		"http://localhost:8081",
-// 		"http://localhost:8082",
-// 	}
-// 	rrIndex int
-// )
-
 type Server struct {
-	addr  string
-	conn  *pgx.Conn
-	proxy *httputil.ReverseProxy
+	// addr string
+	pool *pgxpool.Pool
+	ctx  context.Context
 }
 
-func NewServer(conn *pgx.Conn, apiID string) *Server {
+func NewServer(pool *pgxpool.Pool, ctx context.Context) *Server {
 
-	addr := fmt.Sprintf("http://api0%s:3000", apiID)
-	url, err := url.Parse(addr)
-	if err != nil {
-		panic(err)
-	}
-	proxy := httputil.NewSingleHostReverseProxy(url)
+	// addr := fmt.Sprintf("http://api0%s:%s", apiID, apiPort)
+	// conn, err := pool.Acquire(ctx)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer conn.Release()
+
+	// log.Printf("Database has been connected: " + utils.GetDBUrl())
+
 	return &Server{
-		addr:  addr,
-		conn:  conn,
-		proxy: proxy}
+		// addr: addr,
+		pool: pool,
+		// conn: conn,
+		ctx: ctx,
+	}
+
 }
 
-func (s *Server) GetAddress() string {
-	return s.addr
-}
+// func (s *Server) GetAddress() string {
+// 	return s.addr
+// }
 
 func (s *Server) IsAlive() bool {
 	return true
-}
-
-func (s *Server) Serve(w http.ResponseWriter, r *http.Request) {
-	s.proxy.ServeHTTP(w, r)
 }
