@@ -15,8 +15,10 @@ func main() {
 
 	ctx := context.Background()
 
+	log.Print("Starting server...", utils.GetDBUrl())
 	pool, err := pgxpool.New(ctx, utils.GetDBUrl())
 	if err != nil {
+		log.Print("Failed to connect to database")
 		panic(err)
 	}
 	defer pool.Close()
@@ -24,10 +26,8 @@ func main() {
 	apiServer := routes.NewServer(pool, ctx)
 
 	http.HandleFunc("/clientes/", apiServer.Handler)
-
-	log.Printf("Server started")
-
-	if err := http.ListenAndServe("0.0.0.0:3000", nil); err != nil {
+	log.Print("Server started at :8000")
+	if err := http.ListenAndServe("0.0.0.0:8080", nil); err != nil {
 		log.Fatalf("Failed to start")
 	}
 

@@ -14,9 +14,9 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(path, "/")
 	id, _ := strconv.Atoi(pathParts[1])
 
-	cliente, ok := db.GetClient(s.pool, id)
-	if !ok {
-		http.Error(w, "Error: Invalid client id", http.StatusNotFound)
+	cliente, status := db.GetClient(s.pool, id)
+	if status != http.StatusOK {
+		http.Error(w, "", status)
 		return
 	}
 
@@ -25,30 +25,28 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 
 		if pathParts[2] != "extrato" {
-			http.Error(w, "Error: Path not found", http.StatusNotFound)
+			http.Error(w, "", http.StatusNotFound)
 			return
 		}
 
-		extract, ok := db.GetExtrato(s.pool, cliente)
-		if !ok {
-			http.Error(w, "Error", http.StatusBadRequest)
+		extract, status := db.GetExtrato(s.pool, cliente)
+		if status != http.StatusOK {
+			http.Error(w, "", status)
 			return
 		}
 
 		extract.SendResponse(w)
 
-		return
-
 	case http.MethodPost:
 
 		if pathParts[2] != "transacoes" {
-			http.Error(w, "Error: Path not found", http.StatusUnprocessableEntity)
+			http.Error(w, "", http.StatusUnprocessableEntity)
 			return
 		}
 
 		transaction, status := db.GetTransaction(r, id)
 		if status != http.StatusOK {
-			http.Error(w, "Error decoding Json", status)
+			http.Error(w, "", status)
 			return
 		}
 
@@ -58,24 +56,23 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 
 		case "d":
 			status := cliente.ProcessDebitTransaction(s.pool, transaction.Value)
+
 			if status != http.StatusOK {
 				http.Error(w, "", status)
+				return
 			}
 			cliente.SendResponse(w)
-			return
 
 		case "c":
 			cliente.ProcessCreditTransaction(s.pool, transaction.Value)
 			cliente.SendResponse(w)
-			return
 
 		default:
-			http.Error(w, "Invalid transaction type", http.StatusUnprocessableEntity)
-			return
+			http.Error(w, "", http.StatusUnprocessableEntity)
 		}
 
 	default:
-		http.Error(w, "Expect method GET or POST at /clientes/", http.StatusBadRequest)
+		http.Error(w, "", http.StatusBadRequest)
 	}
 
 }

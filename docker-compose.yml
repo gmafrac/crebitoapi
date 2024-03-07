@@ -1,16 +1,10 @@
-version: "3.5"
+version: "3"
 
 services:
 
   api1: &api
     build:
       context: .
-    hostname: api01
-    ports:
-      - "3001:3000"
-    environment:
-      API_ID: 1
-      API_PORT: "3000"
     env_file:
       - .env
     depends_on:
@@ -18,18 +12,12 @@ services:
     deploy: 
       resources:
         limits:
-          cpus: "0.55"
-          memory: "200MB"
+          cpus: "0.3"
+          memory: "50MB"
 
   api2:
     <<: *api
-    hostname: api02
-    ports:
-      - "3002:3000"
-    environment:
-      API_ID: 2
-      API_PORT: "3000"
-
+    
   db:
     image: postgres:16.1
     environment:
@@ -42,8 +30,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: "140MB"
+          cpus: "0.65"
+          memory: "400MB"
 
   nginx:
     image: nginx:latest
@@ -57,10 +45,9 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
-          memory: "10MB"
+          cpus: "0.25"
+          memory: "50MB"
 
-# networks:
-#   default:
-#     driver: bridge
-#     name: crebitoapi
+networks:
+  default:
+    driver: bridge

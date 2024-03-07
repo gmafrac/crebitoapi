@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -32,15 +31,14 @@ const get_extract = `
 	LIMIT 10	
 `
 
-func GetClient(pool *pgxpool.Pool, id int) (*Client, bool) {
+func GetClient(pool *pgxpool.Pool, id int) (*Client, int) {
 	c := &Client{}
 
 	err := pool.QueryRow(context.Background(), select_client, id).Scan(&c.ID, &c.Limit, &c.Balance)
 	if err != nil {
-		log.Print(err)
-		return nil, false
+		return nil, http.StatusNotFound
 	}
-	return c, true
+	return c, http.StatusOK
 }
 
 func (c *Client) ProcessCreditTransaction(pool *pgxpool.Pool, value int) {
@@ -109,29 +107,29 @@ func (t *Transaction) SaveToDB(pool *pgxpool.Pool) bool {
 	return err == nil
 }
 
-func GetExtrato(pool *pgxpool.Pool, c *Client) (*Extract, bool) {
+func GetExtrato(pool *pgxpool.Pool, c *Client) (*Extract, int) {
 
 	extract := &Extract{
 		AccountSummary: AccountSummary{
 			Balance:       c.Balance,
 			Limit:         c.Limit,
 			StatementDate: time.Now()},
-		LastTransations: []TransactionSummary{}}
+		LastTransations: make([]TransactionSummary, 0, 10)}
 
 	rows, err := pool.Query(
 		context.Background(),
 		get_extract, c.ID)
-
 	if err != nil {
-		return nil, false
+		return nil, http.StatusBadRequest
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var e TransactionSummary
 		rows.Scan(&e.Value, &e.Type, &e.Description, &e.CreatedAt)
 		extract.LastTransations = append(extract.LastTransations, e)
 	}
-	return extract, true
+	return extract, http.StatusOK
 }
 
 func (e *Extract) SendResponse(w http.ResponseWriter) {

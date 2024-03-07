@@ -29,6 +29,10 @@ func GetDBUrl() string {
 	return db_engine + "://" + db_user + ":" + db_password + "@" + db_host + ":" + db_port + "/" + db_name
 }
 
+func GetAPIPath() string {
+	return os.Getenv("API_NAME")
+}
+
 func GetEnv(key string) string {
 	return os.Getenv(key)
 }
