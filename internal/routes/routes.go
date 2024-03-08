@@ -14,62 +14,23 @@ func (s *Server) Handler(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(path, "/")
 	id, _ := strconv.Atoi(pathParts[1])
 
-	cliente, status := db.GetClient(s.pool, id)
-	if status != http.StatusOK {
-		http.Error(w, "", status)
-		return
-	}
+	client := &db.Client{ID: id}
 
 	switch r.Method {
 
 	case http.MethodGet:
-
 		if pathParts[2] != "extrato" {
 			http.Error(w, "", http.StatusNotFound)
 			return
 		}
-
-		extract, status := db.GetExtrato(s.pool, cliente)
-		if status != http.StatusOK {
-			http.Error(w, "", status)
-			return
-		}
-
-		extract.SendResponse(w)
+		s.Extract(w, client)
 
 	case http.MethodPost:
-
 		if pathParts[2] != "transacoes" {
-			http.Error(w, "", http.StatusUnprocessableEntity)
+			http.Error(w, "", http.StatusNotFound)
 			return
 		}
-
-		transaction, status := db.GetTransaction(r, id)
-		if status != http.StatusOK {
-			http.Error(w, "", status)
-			return
-		}
-
-		transaction.SaveToDB(s.pool)
-
-		switch transaction.Type {
-
-		case "d":
-			status := cliente.ProcessDebitTransaction(s.pool, transaction.Value)
-
-			if status != http.StatusOK {
-				http.Error(w, "", status)
-				return
-			}
-			cliente.SendResponse(w)
-
-		case "c":
-			cliente.ProcessCreditTransaction(s.pool, transaction.Value)
-			cliente.SendResponse(w)
-
-		default:
-			http.Error(w, "", http.StatusUnprocessableEntity)
-		}
+		s.Transaction(w, r, client)
 
 	default:
 		http.Error(w, "", http.StatusBadRequest)

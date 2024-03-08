@@ -26,6 +26,7 @@ func main() {
 	apiServer := routes.NewServer(pool, ctx)
 
 	http.HandleFunc("/clientes/", apiServer.Handler)
+
 	log.Print("Server started at :8000")
 	if err := http.ListenAndServe("0.0.0.0:8080", nil); err != nil {
 		log.Fatalf("Failed to start")
